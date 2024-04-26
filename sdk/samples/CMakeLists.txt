@@ -9,11 +9,13 @@ project(McmDPSdk_Samples VERSION 0.1.0
         )
 
 set(CMAKE_C_STANDARD 11)
+set(MTL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../mtl)
+set(MTL_LIB mtl)
 
 add_executable(sender_app sender_app.c)
-target_include_directories(sender_app PRIVATE ../include)
-target_link_libraries(sender_app PRIVATE mcm_dp)
+target_include_directories(sender_app PRIVATE ../include ${MTL_DIR} ${MTL_DIR}/lib/src/st2110/ /usr/local/include/mtl/)
+target_link_libraries(sender_app PRIVATE ${MTL_LIB} mcm_dp)
 
 add_executable(recver_app recver_app.c)
-target_include_directories(recver_app PRIVATE ../include)
-target_link_libraries(recver_app PRIVATE mcm_dp)
+target_include_directories(recver_app PRIVATE ../include ${MTL_DIR} ${MTL_DIR}/lib/src/st2110/ /usr/local/include/mtl/)
+target_link_libraries(recver_app PRIVATE ${MTL_LIB} mcm_dp)
