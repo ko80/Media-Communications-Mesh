@@ -7,6 +7,7 @@
 #include "libavformat/internal.h"
 #include <mcm_dp.h>
 #include <bsd/string.h>
+#include <mtl/st_pipeline_api.h>
 
 typedef struct McmDemuxerContext {
     const AVClass *class; /**< Class for private options. */
@@ -25,7 +26,21 @@ typedef struct McmDemuxerContext {
 
     mcm_conn_context *rx_handle;
     bool first_frame;
+    video_pixel_format mcm_pixel_format;    
 } McmDemuxerContext;
+
+static uint32_t getFrameSize(video_pixel_format fmt, uint32_t width, uint32_t height) {
+    if (fmt == PIX_FMT_YUV422P) {
+        return st_frame_size(ST_FRAME_FMT_UYVY, width, height, false); /** YUV 422 packed 8bit(aka ST20_FMT_YUV_422_8BIT) */
+    } else if (fmt == PIX_FMT_YUV422P_10BIT_LE) {
+        return st_frame_size(ST_FRAME_FMT_YUV422PLANAR10LE , width, height, false); /** YUV 422 planar 10bit little endian */
+    } else if (fmt == PIX_FMT_YUV444M) {
+        return st_frame_size(ST_FRAME_FMT_YUV444RFC4175PG4BE10, width, height, false);  /** RFC4175 in ST2110(ST20_FMT_YUV_444_10BIT), four YUV 444 10 bit pixel groups on 15 bytes, big endian */
+    } else if (fmt == PIX_FMT_RGB8) {
+        return st_frame_size(ST_FRAME_FMT_RGB8, width, height, false);
+    }
+    return width*height*3/2; // PIX_FMT_NV12 (yuv420p8)
+}
 
 static int mcm_read_header(AVFormatContext* avctx)
 {
@@ -105,7 +120,7 @@ static int mcm_read_header(AVFormatContext* avctx)
             param.pix_fmt = PIX_FMT_NV12;
         }
 
-        param.payload_args.video_args.pix_fmt = param.pix_fmt;
+        param.payload_args.video_args.pix_fmt = s->mcm_pixel_format = param.pix_fmt;
         break;
     }
 
@@ -158,7 +173,8 @@ static int mcm_read_packet(AVFormatContext* avctx, AVPacket* pkt)
         return AVERROR(EIO);
     }
 
-    frame_size = (s->width * s->height * 3)/2;
+    // frame_size = (s->width * s->height * 3)/2;
+    frame_size = getFrameSize(s->mcm_pixel_format, s->width, s->height);
 
     if ((ret = av_new_packet(pkt, frame_size)) < 0)
         return ret;
